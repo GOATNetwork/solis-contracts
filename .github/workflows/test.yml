@@ -1,0 +1,31 @@
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "latest"
+          cache: "npm"
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+
+      - name: Install deps
+        run: npm ci
+
+      - name: Check format
+        run: forge fmt --check contracts
+
+      - name: Build
+        run: npx hardhat compile
+
+      - name: Run tests
+        run: npx hardhat test
