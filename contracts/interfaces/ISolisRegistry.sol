@@ -5,7 +5,6 @@ interface ISolisRegistry {
     struct VersionInfo {
         uint256 version;
         address escrow;
-        bytes32 codeHash;
         string semver;
         bool active;
         bool deprecated;

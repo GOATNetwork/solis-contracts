@@ -17,7 +17,7 @@ contract SolisRegistry is Ownable, ISolisRegistry {
     /// @notice Version currently recommended for new Matter submissions.
     uint256 public latestVersion;
 
-    event VersionRegistered(uint256 indexed version, address indexed escrow, string semver, bytes32 codeHash);
+    event VersionRegistered(uint256 indexed version, address indexed escrow, string semver);
     event LatestVersionUpdated(uint256 indexed oldVersion, uint256 indexed newVersion, address indexed escrow);
     event VersionDeprecated(uint256 indexed version, address indexed escrow);
     event VersionReactivated(uint256 indexed version, address indexed escrow);
@@ -34,7 +34,7 @@ contract SolisRegistry is Ownable, ISolisRegistry {
     constructor(address initialOwner) Ownable(initialOwner) {}
 
     /// @notice Registers a new escrow version.
-    /// @dev Registration stores the escrow code hash so off-chain systems can audit what was routed.
+    /// @dev Registration records only routing metadata. Bytecode verification remains an off-chain concern.
     function registerVersion(uint256 version, address escrow, string calldata semver) external onlyOwner {
         if (version == 0) revert InvalidVersion();
         if (versions[version].escrow != address(0)) {
@@ -46,11 +46,9 @@ contract SolisRegistry is Ownable, ISolisRegistry {
         if (escrowVersion[escrow] != 0) revert EscrowAlreadyRegistered(escrow);
         if (bytes(semver).length == 0) revert InvalidSemver();
 
-        bytes32 codeHash = escrow.codehash;
         versions[version] = VersionInfo({
             version: version,
             escrow: escrow,
-            codeHash: codeHash,
             semver: semver,
             active: true,
             deprecated: false,
@@ -58,7 +56,7 @@ contract SolisRegistry is Ownable, ISolisRegistry {
         });
         escrowVersion[escrow] = version;
 
-        emit VersionRegistered(version, escrow, semver, codeHash);
+        emit VersionRegistered(version, escrow, semver);
 
         // The first registered version becomes latest to avoid a separate bootstrap transaction.
         if (latestVersion == 0) {

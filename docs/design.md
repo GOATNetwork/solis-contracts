@@ -594,7 +594,6 @@ This path requires the payor to approve the escrow contract before submission.
 struct VersionInfo {
     uint256 version;
     address escrow;
-    bytes32 codeHash;
     string semver;
     bool active;
     bool deprecated;
@@ -662,8 +661,7 @@ settlementDigest
 event VersionRegistered(
     uint256 indexed version,
     address indexed escrow,
-    string semver,
-    bytes32 codeHash
+    string semver
 );
 
 event LatestVersionUpdated(
