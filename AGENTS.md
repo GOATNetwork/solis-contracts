@@ -36,10 +36,7 @@ Core contracts:
 Run these commands before handing off contract changes:
 
 ```shell
-forge fmt --check contracts
-npx hardhat build
-npx tsc --noEmit
-npx hardhat test
+npm run verify
 ```
 
 Tests should cover signature binding, amount accounting, state transitions, role authorization, funding paths, and token transfer edge cases for any behavior they change.

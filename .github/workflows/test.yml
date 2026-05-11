@@ -24,6 +24,9 @@ jobs:
       - name: Check format
         run: forge fmt --check contracts
 
+      - name: Check TypeScript format
+        run: npm run format:ts:check
+
       - name: Build
         run: npx hardhat build
 

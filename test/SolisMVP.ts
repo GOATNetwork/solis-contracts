@@ -103,7 +103,9 @@ describe("Solis MVP", async function () {
     ] = await viem.getWalletClients();
 
     const token = await viem.deployContract("MockUSDC");
-    const registry = await viem.deployContract("SolisRegistry", [owner.account.address]);
+    const registry = await viem.deployContract("SolisRegistry", [
+      owner.account.address,
+    ]);
     const escrow = await viem.deployContract("SolisEscrow", [
       owner.account.address,
       platformSigner.account.address,
@@ -119,9 +121,13 @@ describe("Solis MVP", async function () {
     const payorToken = await viem.getContractAt("MockUSDC", token.address, {
       client: { wallet: payor },
     });
-    const relayerEscrow = await viem.getContractAt("SolisEscrow", escrow.address, {
-      client: { wallet: relayer },
-    });
+    const relayerEscrow = await viem.getContractAt(
+      "SolisEscrow",
+      escrow.address,
+      {
+        client: { wallet: relayer },
+      },
+    );
 
     return {
       owner,
@@ -210,7 +216,9 @@ describe("Solis MVP", async function () {
   ) {
     const matter = await fixture.escrow.read.getMatter([matterId]);
     const refundAmount =
-      matter.recipientAmount + matter.platformFeeAmount + matter.mediatorFeeAmount;
+      matter.recipientAmount +
+      matter.platformFeeAmount +
+      matter.mediatorFeeAmount;
     const message = {
       matterId,
       settlementDigest: matter.settlementDigest,
@@ -288,11 +296,17 @@ describe("Solis MVP", async function () {
       getAddress(await fixture.registry.read.getEscrow([1n])),
       getAddress(fixture.escrow.address),
     );
-    assert.equal(await fixture.registry.read.isRegisteredEscrow([fixture.escrow.address]), true);
+    assert.equal(
+      await fixture.registry.read.isRegisteredEscrow([fixture.escrow.address]),
+      true,
+    );
 
     await fixture.registry.write.deprecateVersion([1n]);
     assert.equal(await fixture.registry.read.latestVersion(), 0n);
-    assert.equal(getAddress(await fixture.registry.read.getLatestEscrow()), zeroAddress);
+    assert.equal(
+      getAddress(await fixture.registry.read.getLatestEscrow()),
+      zeroAddress,
+    );
 
     await fixture.registry.write.reactivateVersion([1n]);
     await fixture.registry.write.setLatestVersion([1n]);
@@ -314,10 +328,16 @@ describe("Solis MVP", async function () {
       2n,
     ]);
     await assert.rejects(
-      fixture.registry.write.registerVersion([3n, wrongVersionEscrow.address, "1.0.0"]),
+      fixture.registry.write.registerVersion([
+        3n,
+        wrongVersionEscrow.address,
+        "1.0.0",
+      ]),
     );
 
-    const otherRegistry = await viem.deployContract("SolisRegistry", [fixture.owner.account.address]);
+    const otherRegistry = await viem.deployContract("SolisRegistry", [
+      fixture.owner.account.address,
+    ]);
     const wrongRegistryEscrow = await viem.deployContract("SolisEscrow", [
       fixture.owner.account.address,
       fixture.platformSigner.account.address,
@@ -327,7 +347,11 @@ describe("Solis MVP", async function () {
       4n,
     ]);
     await assert.rejects(
-      fixture.registry.write.registerVersion([4n, wrongRegistryEscrow.address, "1.0.0"]),
+      fixture.registry.write.registerVersion([
+        4n,
+        wrongRegistryEscrow.address,
+        "1.0.0",
+      ]),
     );
 
     const semverMismatchEscrow = await viem.deployContract("SolisEscrow", [
@@ -339,7 +363,11 @@ describe("Solis MVP", async function () {
       5n,
     ]);
     await assert.rejects(
-      fixture.registry.write.registerVersion([5n, semverMismatchEscrow.address, "1.0.1"]),
+      fixture.registry.write.registerVersion([
+        5n,
+        semverMismatchEscrow.address,
+        "1.0.1",
+      ]),
     );
   });
 
@@ -348,26 +376,45 @@ describe("Solis MVP", async function () {
     const params = await makeParams(fixture, "allowance-immediate");
     const sigs = await signMatter(fixture, params);
 
-    await fixture.payorToken.write.approve([fixture.escrow.address, params.grossAmount]);
-    await fixture.relayerEscrow.write.submitMatterWithAllowance([params, sigs, true]);
+    await fixture.payorToken.write.approve([
+      fixture.escrow.address,
+      params.grossAmount,
+    ]);
+    await fixture.relayerEscrow.write.submitMatterWithAllowance([
+      params,
+      sigs,
+      true,
+    ]);
 
-    assert.equal(Number(await fixture.escrow.read.getMatterStatus([params.matterId])), 2);
+    assert.equal(
+      Number(await fixture.escrow.read.getMatterStatus([params.matterId])),
+      2,
+    );
     assert.equal(
       await fixture.token.read.balanceOf([fixture.recipient.account.address]),
       params.recipientAmount,
     );
     assert.equal(
-      await fixture.token.read.balanceOf([fixture.platformFeeRecipient.account.address]),
+      await fixture.token.read.balanceOf([
+        fixture.platformFeeRecipient.account.address,
+      ]),
       params.platformFeeAmount,
     );
     assert.equal(
       await fixture.token.read.balanceOf([fixture.mediator.account.address]),
       params.mediatorFeeAmount,
     );
-    assert.equal(await fixture.escrow.read.accountedBalance([fixture.token.address]), 0n);
+    assert.equal(
+      await fixture.escrow.read.accountedBalance([fixture.token.address]),
+      0n,
+    );
 
     await assert.rejects(
-      fixture.relayerEscrow.write.submitMatterWithAllowance([params, sigs, false]),
+      fixture.relayerEscrow.write.submitMatterWithAllowance([
+        params,
+        sigs,
+        false,
+      ]),
     );
   });
 
@@ -377,14 +424,25 @@ describe("Solis MVP", async function () {
     const sigs = await signMatter(fixture, params);
     const auth = await signUSDCAuth(fixture, params, "usdc-auth-immediate");
 
-    await fixture.relayerEscrow.write.submitMatterWithUSDCAuth([params, sigs, auth, true]);
+    await fixture.relayerEscrow.write.submitMatterWithUSDCAuth([
+      params,
+      sigs,
+      auth,
+      true,
+    ]);
 
-    assert.equal(Number(await fixture.escrow.read.getMatterStatus([params.matterId])), 2);
+    assert.equal(
+      Number(await fixture.escrow.read.getMatterStatus([params.matterId])),
+      2,
+    );
     assert.equal(
       await fixture.token.read.balanceOf([fixture.recipient.account.address]),
       params.recipientAmount,
     );
-    assert.equal(await fixture.escrow.read.accountedBalance([fixture.token.address]), 0n);
+    assert.equal(
+      await fixture.escrow.read.accountedBalance([fixture.token.address]),
+      0n,
+    );
   });
 
   it("rejects token funding that transfers less than grossAmount", async function () {
@@ -393,16 +451,23 @@ describe("Solis MVP", async function () {
     await shortToken.write.mint([fixture.payor.account.address, 100_000_000n]);
     await fixture.escrow.write.setAllowedToken([shortToken.address, true]);
 
-    const payorShortToken = await viem.getContractAt("MockShortTransferUSDC", shortToken.address, {
-      client: { wallet: fixture.payor },
-    });
+    const payorShortToken = await viem.getContractAt(
+      "MockShortTransferUSDC",
+      shortToken.address,
+      {
+        client: { wallet: fixture.payor },
+      },
+    );
 
     const allowanceParams = await makeParams(fixture, "short-allowance", {
       token: shortToken.address,
     });
     const allowanceSigs = await signMatter(fixture, allowanceParams);
 
-    await payorShortToken.write.approve([fixture.escrow.address, allowanceParams.grossAmount]);
+    await payorShortToken.write.approve([
+      fixture.escrow.address,
+      allowanceParams.grossAmount,
+    ]);
     await assert.rejects(
       fixture.relayerEscrow.write.submitMatterWithAllowance([
         allowanceParams,
@@ -410,8 +475,16 @@ describe("Solis MVP", async function () {
         false,
       ]),
     );
-    assert.equal(Number(await fixture.escrow.read.getMatterStatus([allowanceParams.matterId])), 0);
-    assert.equal(await fixture.escrow.read.accountedBalance([shortToken.address]), 0n);
+    assert.equal(
+      Number(
+        await fixture.escrow.read.getMatterStatus([allowanceParams.matterId]),
+      ),
+      0,
+    );
+    assert.equal(
+      await fixture.escrow.read.accountedBalance([shortToken.address]),
+      0n,
+    );
 
     const authParams = await makeParams(fixture, "short-usdc-auth", {
       token: shortToken.address,
@@ -420,10 +493,21 @@ describe("Solis MVP", async function () {
     const auth = await signUSDCAuth(fixture, authParams, "short-usdc-auth");
 
     await assert.rejects(
-      fixture.relayerEscrow.write.submitMatterWithUSDCAuth([authParams, authSigs, auth, false]),
+      fixture.relayerEscrow.write.submitMatterWithUSDCAuth([
+        authParams,
+        authSigs,
+        auth,
+        false,
+      ]),
     );
-    assert.equal(Number(await fixture.escrow.read.getMatterStatus([authParams.matterId])), 0);
-    assert.equal(await fixture.escrow.read.accountedBalance([shortToken.address]), 0n);
+    assert.equal(
+      Number(await fixture.escrow.read.getMatterStatus([authParams.matterId])),
+      0,
+    );
+    assert.equal(
+      await fixture.escrow.read.accountedBalance([shortToken.address]),
+      0n,
+    );
   });
 
   it("keeps timed matter funds accounted until release time", async function () {
@@ -436,23 +520,44 @@ describe("Solis MVP", async function () {
     });
     const sigs = await signMatter(fixture, params);
 
-    await fixture.payorToken.write.approve([fixture.escrow.address, params.grossAmount]);
-    await fixture.relayerEscrow.write.submitMatterWithAllowance([params, sigs, true]);
+    await fixture.payorToken.write.approve([
+      fixture.escrow.address,
+      params.grossAmount,
+    ]);
+    await fixture.relayerEscrow.write.submitMatterWithAllowance([
+      params,
+      sigs,
+      true,
+    ]);
 
-    assert.equal(Number(await fixture.escrow.read.getMatterStatus([params.matterId])), 1);
-    assert.equal(await fixture.escrow.read.isReleasable([params.matterId]), false);
+    assert.equal(
+      Number(await fixture.escrow.read.getMatterStatus([params.matterId])),
+      1,
+    );
+    assert.equal(
+      await fixture.escrow.read.isReleasable([params.matterId]),
+      false,
+    );
     assert.equal(
       await fixture.escrow.read.accountedBalance([fixture.token.address]),
       params.grossAmount,
     );
 
-    await assert.rejects(fixture.relayerEscrow.write.release([params.matterId]));
+    await assert.rejects(
+      fixture.relayerEscrow.write.release([params.matterId]),
+    );
 
     await networkHelpers.time.increaseTo(params.releaseTime);
     await fixture.relayerEscrow.write.release([params.matterId]);
 
-    assert.equal(Number(await fixture.escrow.read.getMatterStatus([params.matterId])), 2);
-    assert.equal(await fixture.escrow.read.accountedBalance([fixture.token.address]), 0n);
+    assert.equal(
+      Number(await fixture.escrow.read.getMatterStatus([params.matterId])),
+      2,
+    );
+    assert.equal(
+      await fixture.escrow.read.accountedBalance([fixture.token.address]),
+      0n,
+    );
   });
 
   it("treats global pause as a full freeze for submit, release, and refund", async function () {
@@ -465,29 +570,54 @@ describe("Solis MVP", async function () {
     });
     const sigs = await signMatter(fixture, params);
 
-    await fixture.payorToken.write.approve([fixture.escrow.address, params.grossAmount]);
+    await fixture.payorToken.write.approve([
+      fixture.escrow.address,
+      params.grossAmount,
+    ]);
     await fixture.escrow.write.pause({ account: fixture.pauser.account });
     await assert.rejects(
-      fixture.relayerEscrow.write.submitMatterWithAllowance([params, sigs, false]),
+      fixture.relayerEscrow.write.submitMatterWithAllowance([
+        params,
+        sigs,
+        false,
+      ]),
     );
 
     await fixture.escrow.write.unpause({ account: fixture.pauser.account });
-    await fixture.relayerEscrow.write.submitMatterWithAllowance([params, sigs, false]);
+    await fixture.relayerEscrow.write.submitMatterWithAllowance([
+      params,
+      sigs,
+      false,
+    ]);
 
     await fixture.escrow.write.pause({ account: fixture.pauser.account });
     await networkHelpers.time.increaseTo(params.releaseTime);
-    await assert.rejects(fixture.relayerEscrow.write.release([params.matterId]));
+    await assert.rejects(
+      fixture.relayerEscrow.write.release([params.matterId]),
+    );
 
     const cancellationSigs = await signCancellation(fixture, params.matterId);
     await assert.rejects(
-      fixture.relayerEscrow.write.cancelAndRefundByAgreement([params.matterId, cancellationSigs]),
+      fixture.relayerEscrow.write.cancelAndRefundByAgreement([
+        params.matterId,
+        cancellationSigs,
+      ]),
     );
 
     await fixture.escrow.write.unpause({ account: fixture.pauser.account });
-    await fixture.relayerEscrow.write.cancelAndRefundByAgreement([params.matterId, cancellationSigs]);
+    await fixture.relayerEscrow.write.cancelAndRefundByAgreement([
+      params.matterId,
+      cancellationSigs,
+    ]);
 
-    assert.equal(Number(await fixture.escrow.read.getMatterStatus([params.matterId])), 4);
-    assert.equal(await fixture.escrow.read.accountedBalance([fixture.token.address]), 0n);
+    assert.equal(
+      Number(await fixture.escrow.read.getMatterStatus([params.matterId])),
+      4,
+    );
+    assert.equal(
+      await fixture.escrow.read.accountedBalance([fixture.token.address]),
+      0n,
+    );
   });
 
   it("pauses a matter and refunds only with joint cancellation signatures", async function () {
@@ -500,29 +630,55 @@ describe("Solis MVP", async function () {
     });
     const sigs = await signMatter(fixture, params);
 
-    await fixture.payorToken.write.approve([fixture.escrow.address, params.grossAmount]);
-    await fixture.relayerEscrow.write.submitMatterWithAllowance([params, sigs, false]);
-    await fixture.escrow.write.pauseMatter([params.matterId, digest("compliance-review")], {
-      account: fixture.pauser.account,
-    });
+    await fixture.payorToken.write.approve([
+      fixture.escrow.address,
+      params.grossAmount,
+    ]);
+    await fixture.relayerEscrow.write.submitMatterWithAllowance([
+      params,
+      sigs,
+      false,
+    ]);
+    await fixture.escrow.write.pauseMatter(
+      [params.matterId, digest("compliance-review")],
+      {
+        account: fixture.pauser.account,
+      },
+    );
 
-    assert.equal(Number(await fixture.escrow.read.getMatterStatus([params.matterId])), 5);
-    assert.equal(await fixture.escrow.read.isReleasable([params.matterId]), false);
-    await assert.rejects(fixture.relayerEscrow.write.release([params.matterId]));
+    assert.equal(
+      Number(await fixture.escrow.read.getMatterStatus([params.matterId])),
+      5,
+    );
+    assert.equal(
+      await fixture.escrow.read.isReleasable([params.matterId]),
+      false,
+    );
+    await assert.rejects(
+      fixture.relayerEscrow.write.release([params.matterId]),
+    );
 
-    const payorBalanceBefore = await fixture.token.read.balanceOf([fixture.payor.account.address]);
+    const payorBalanceBefore = await fixture.token.read.balanceOf([
+      fixture.payor.account.address,
+    ]);
     const cancellationSigs = await signCancellation(fixture, params.matterId);
     await fixture.relayerEscrow.write.cancelAndRefundByAgreement([
       params.matterId,
       cancellationSigs,
     ]);
 
-    assert.equal(Number(await fixture.escrow.read.getMatterStatus([params.matterId])), 4);
+    assert.equal(
+      Number(await fixture.escrow.read.getMatterStatus([params.matterId])),
+      4,
+    );
     assert.equal(
       await fixture.token.read.balanceOf([fixture.payor.account.address]),
       payorBalanceBefore + params.grossAmount,
     );
-    assert.equal(await fixture.escrow.read.accountedBalance([fixture.token.address]), 0n);
+    assert.equal(
+      await fixture.escrow.read.accountedBalance([fixture.token.address]),
+      0n,
+    );
   });
 
   it("does not sweep accounted escrow funds but can sweep excess tokens", async function () {
@@ -535,8 +691,15 @@ describe("Solis MVP", async function () {
     });
     const sigs = await signMatter(fixture, params);
 
-    await fixture.payorToken.write.approve([fixture.escrow.address, params.grossAmount]);
-    await fixture.relayerEscrow.write.submitMatterWithAllowance([params, sigs, false]);
+    await fixture.payorToken.write.approve([
+      fixture.escrow.address,
+      params.grossAmount,
+    ]);
+    await fixture.relayerEscrow.write.submitMatterWithAllowance([
+      params,
+      sigs,
+      false,
+    ]);
 
     await assert.rejects(
       fixture.escrow.write.sweepExcessToken([
@@ -553,7 +716,10 @@ describe("Solis MVP", async function () {
       123n,
     ]);
 
-    assert.equal(await fixture.token.read.balanceOf([fixture.other.account.address]), 123n);
+    assert.equal(
+      await fixture.token.read.balanceOf([fixture.other.account.address]),
+      123n,
+    );
     assert.equal(
       await fixture.escrow.read.accountedBalance([fixture.token.address]),
       params.grossAmount,
@@ -562,11 +728,20 @@ describe("Solis MVP", async function () {
 
   it("requires the hinted platform signer to be active", async function () {
     const fixture = await networkHelpers.loadFixture(deployFixture);
-    const inactiveParams = await makeParams(fixture, "inactive-platform-signer");
+    const inactiveParams = await makeParams(
+      fixture,
+      "inactive-platform-signer",
+    );
     const inactiveSigs = await signMatter(fixture, inactiveParams);
 
-    await fixture.escrow.write.setPlatformSigner([fixture.platformSigner.account.address, false]);
-    await fixture.payorToken.write.approve([fixture.escrow.address, inactiveParams.grossAmount]);
+    await fixture.escrow.write.setPlatformSigner([
+      fixture.platformSigner.account.address,
+      false,
+    ]);
+    await fixture.payorToken.write.approve([
+      fixture.escrow.address,
+      inactiveParams.grossAmount,
+    ]);
     await assert.rejects(
       fixture.relayerEscrow.write.submitMatterWithAllowance([
         inactiveParams,
@@ -575,14 +750,29 @@ describe("Solis MVP", async function () {
       ]),
     );
 
-    await fixture.escrow.write.setPlatformSigner([fixture.other.account.address, true]);
+    await fixture.escrow.write.setPlatformSigner([
+      fixture.other.account.address,
+      true,
+    ]);
     const rotatedParams = await makeParams(fixture, "rotated-platform-signer");
     const rotatedSigs = await signMatter(fixture, rotatedParams, fixture.other);
 
-    await fixture.payorToken.write.approve([fixture.escrow.address, rotatedParams.grossAmount]);
-    await fixture.relayerEscrow.write.submitMatterWithAllowance([rotatedParams, rotatedSigs, true]);
+    await fixture.payorToken.write.approve([
+      fixture.escrow.address,
+      rotatedParams.grossAmount,
+    ]);
+    await fixture.relayerEscrow.write.submitMatterWithAllowance([
+      rotatedParams,
+      rotatedSigs,
+      true,
+    ]);
 
-    assert.equal(Number(await fixture.escrow.read.getMatterStatus([rotatedParams.matterId])), 2);
+    assert.equal(
+      Number(
+        await fixture.escrow.read.getMatterStatus([rotatedParams.matterId]),
+      ),
+      2,
+    );
   });
 
   it("accepts an EIP-1271 smart contract platform signer", async function () {
@@ -590,8 +780,14 @@ describe("Solis MVP", async function () {
     const smartPlatformSigner = await viem.deployContract("MockERC1271Wallet", [
       fixture.platformSigner.account.address,
     ]);
-    await fixture.escrow.write.setPlatformSigner([fixture.platformSigner.account.address, false]);
-    await fixture.escrow.write.setPlatformSigner([smartPlatformSigner.address, true]);
+    await fixture.escrow.write.setPlatformSigner([
+      fixture.platformSigner.account.address,
+      false,
+    ]);
+    await fixture.escrow.write.setPlatformSigner([
+      smartPlatformSigner.address,
+      true,
+    ]);
 
     const params = await makeParams(fixture, "erc1271-platform");
     const sigs = await signMatter(
@@ -601,9 +797,19 @@ describe("Solis MVP", async function () {
       smartPlatformSigner.address,
     );
 
-    await fixture.payorToken.write.approve([fixture.escrow.address, params.grossAmount]);
-    await fixture.relayerEscrow.write.submitMatterWithAllowance([params, sigs, true]);
+    await fixture.payorToken.write.approve([
+      fixture.escrow.address,
+      params.grossAmount,
+    ]);
+    await fixture.relayerEscrow.write.submitMatterWithAllowance([
+      params,
+      sigs,
+      true,
+    ]);
 
-    assert.equal(Number(await fixture.escrow.read.getMatterStatus([params.matterId])), 2);
+    assert.equal(
+      Number(await fixture.escrow.read.getMatterStatus([params.matterId])),
+      2,
+    );
   });
 });

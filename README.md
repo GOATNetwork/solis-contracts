@@ -39,10 +39,17 @@ Format Solidity files with Forge:
 forge fmt contracts
 ```
 
+Format TypeScript files with Prettier:
+
+```shell
+npm run format:ts
+```
+
 Check formatting without modifying files:
 
 ```shell
 npm run format:sol:check
+npm run format:ts:check
 ```
 
 ## Test

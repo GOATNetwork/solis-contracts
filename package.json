@@ -7,15 +7,18 @@
     "build": "hardhat build",
     "format:sol": "forge fmt contracts",
     "format:sol:check": "forge fmt --check contracts",
+    "format:ts": "prettier --write \"**/*.{ts,tsx}\"",
+    "format:ts:check": "prettier --check \"**/*.{ts,tsx}\"",
     "test": "hardhat test",
     "typecheck": "tsc --noEmit",
-    "verify": "npm run format:sol:check && npm run build && npm run typecheck && npm test"
+    "verify": "npm run format:sol:check && npm run format:ts:check && npm run build && npm run typecheck && npm test"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-ignition": "^3.1.5",
     "@nomicfoundation/hardhat-toolbox-viem": "^5.0.5",
     "@types/node": "^22.19.18",
     "hardhat": "^3.4.5",
+    "prettier": "^3.8.1",
     "typescript": "~5.8.0",
     "viem": "^2.48.11"
   },
