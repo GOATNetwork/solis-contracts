@@ -489,13 +489,15 @@ The contract verifies:
 payorSignature     -> params.payor
 recipientSignature -> params.recipient
 mediatorSignature  -> params.mediator
-platformSignature  -> active platform signer
+platformSignature  -> sigs.platformSigner
 ```
 
 The contract should support:
 
 1. EOA signatures.
 2. EIP-1271 smart contract wallet signatures.
+
+`sigs.platformSigner` is an explicit active-signer hint. The contract verifies that the hinted signer is active and validates `platformSignature`, avoiding unbounded iteration over historical platform signers.
 
 ### 9.4 PlatformSignature Purpose
 
@@ -551,6 +553,8 @@ IUSDCAuth(params.token).receiveWithAuthorization(
 );
 ```
 
+After the token call returns, the escrow must verify that its token balance increased by exactly `params.grossAmount` before recording the Matter. This rejects short-transfer, fee-on-transfer, or no-op token behavior.
+
 Benefits:
 
 1. The payor does not need a separate approval transaction.
@@ -583,6 +587,8 @@ submitMatterWithAllowance(...)
 ```
 
 This path requires the payor to approve the escrow contract before submission.
+
+As with the USDC authorization path, the escrow must verify an exact `grossAmount` balance increase before creating the Matter.
 
 ---
 
@@ -624,6 +630,14 @@ function getLatestEscrow() external view returns (address);
 function getEscrow(uint256 version) external view returns (address);
 
 function isRegisteredEscrow(address escrow) external view returns (bool);
+```
+
+`registerVersion` must also confirm that the escrow exposes matching registration metadata:
+
+```text
+escrow.registryVersion() == version
+escrow.registry() == address(this)
+escrow.ESCROW_VERSION() == semver
 ```
 
 ### 11.3 Version Strategy
@@ -701,11 +715,12 @@ Responsibilities:
 5. Verify amount totals.
 6. Verify payout rule and release time.
 7. Compute EIP-712 digest.
-8. Verify payor, recipient, mediator, and platform signatures.
+8. Verify payor, recipient, mediator, and hinted active platform signer signatures.
 9. Call USDC `receiveWithAuthorization`.
-10. Store the funded Matter.
-11. Emit `MatterSubmittedAndFunded`.
-12. If `payoutRule == Immediate && autoRelease == true`, execute release.
+10. Verify escrow token balance increased by exactly `grossAmount`.
+11. Store the funded Matter.
+12. Emit `MatterSubmittedAndFunded`.
+13. If `payoutRule == Immediate && autoRelease == true`, execute release.
 
 ### 12.2 release
 
@@ -745,6 +760,8 @@ function cancelAndRefundByAgreement(
 ```
 
 This function cancels a funded or paused Matter and refunds the payor when required parties agree.
+
+The global contract pause is a full emergency freeze. While globally paused, cancellation refunds are blocked even if all cancellation signatures are valid.
 
 Required signatures:
 
@@ -806,6 +823,8 @@ For operational flexibility, V1 should support multiple platform signers:
 ```solidity
 mapping(address => bool) public platformSigners;
 ```
+
+Submission and cancellation signature bundles include the intended `platformSigner` address. Signer rotation is enforced by `platformSigners[platformSigner]`.
 
 ---
 
@@ -1118,6 +1137,8 @@ mapping(address => bool) public allowedTokens;
 
 All ERC-20 transfers should use SafeERC20.
 
+Funding paths should measure the escrow token balance before and after the token transfer and require an exact `grossAmount` increase before increasing `accountedBalance`.
+
 ### 18.4 Address Validation
 
 The contract must reject:
@@ -1195,6 +1216,7 @@ error SubmitDeadlineExpired();
 error ReleaseTimeNotReached();
 error InvalidSignature(address expectedSigner);
 error InvalidPlatformSignature();
+error InvalidFundingAmount(address token, uint256 expectedAmount, uint256 actualAmount);
 error Unauthorized();
 error MatterPausedError(bytes32 matterId);
 error InvalidVersion();
@@ -1255,6 +1277,7 @@ interface ISolisEscrow {
         bytes payorSignature;
         bytes recipientSignature;
         bytes mediatorSignature;
+        address platformSigner;
         bytes platformSignature;
     }
 
@@ -1265,6 +1288,14 @@ interface ISolisEscrow {
         uint8 v;
         bytes32 r;
         bytes32 s;
+    }
+
+    struct CancellationSignatures {
+        bytes payorSignature;
+        bytes recipientSignature;
+        address platformSigner;
+        bytes platformSignature;
+        bytes mediatorSignature;
     }
 
     function submitMatterWithUSDCAuth(
@@ -1281,6 +1312,11 @@ interface ISolisEscrow {
     ) external;
 
     function release(bytes32 matterId) external;
+
+    function cancelAndRefundByAgreement(
+        bytes32 matterId,
+        CancellationSignatures calldata sigs
+    ) external;
 }
 ```
 

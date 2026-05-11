@@ -12,7 +12,7 @@ jobs:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
         with:
-          node-version: "latest"
+          node-version: "24"
           cache: "npm"
 
       - name: Install Foundry
@@ -25,7 +25,10 @@ jobs:
         run: forge fmt --check contracts
 
       - name: Build
-        run: npx hardhat compile
+        run: npx hardhat build
+
+      - name: Typecheck
+        run: npx tsc --noEmit
 
       - name: Run tests
         run: npx hardhat test

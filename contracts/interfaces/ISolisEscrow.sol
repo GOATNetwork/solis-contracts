@@ -55,6 +55,7 @@ interface ISolisEscrow {
         bytes payorSignature;
         bytes recipientSignature;
         bytes mediatorSignature;
+        address platformSigner;
         bytes platformSignature;
     }
 
@@ -70,6 +71,7 @@ interface ISolisEscrow {
     struct CancellationSignatures {
         bytes payorSignature;
         bytes recipientSignature;
+        address platformSigner;
         bytes platformSignature;
         bytes mediatorSignature;
     }

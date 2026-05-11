@@ -5,6 +5,12 @@ import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
 import {ISolisRegistry} from "./interfaces/ISolisRegistry.sol";
 
+interface ISolisEscrowRegistrationMetadata {
+    function registryVersion() external view returns (uint256);
+    function registry() external view returns (address);
+    function ESCROW_VERSION() external view returns (string memory);
+}
+
 /// @title SolisRegistry
 /// @notice Tracks escrow contract versions for clients without using proxy upgrades.
 /// @dev Registry changes only affect discovery for new Matters. Existing Matters remain in their original escrow.
@@ -27,6 +33,7 @@ contract SolisRegistry is Ownable, ISolisRegistry {
     error VersionNotRegistered(uint256 version);
     error EscrowAlreadyRegistered(address escrow);
     error InvalidEscrowAddress(address escrow);
+    error InvalidEscrowMetadata(address escrow);
     error InvalidSemver();
     error VersionNotActive(uint256 version);
 
@@ -45,6 +52,7 @@ contract SolisRegistry is Ownable, ISolisRegistry {
         }
         if (escrowVersion[escrow] != 0) revert EscrowAlreadyRegistered(escrow);
         if (bytes(semver).length == 0) revert InvalidSemver();
+        _validateEscrowMetadata(version, escrow, semver);
 
         versions[version] = VersionInfo({
             version: version,
@@ -120,5 +128,27 @@ contract SolisRegistry is Ownable, ISolisRegistry {
     function _registeredVersion(uint256 version) private view returns (VersionInfo storage info) {
         info = versions[version];
         if (info.escrow == address(0)) revert VersionNotRegistered(version);
+    }
+
+    function _validateEscrowMetadata(uint256 version, address escrow, string calldata semver) private view {
+        ISolisEscrowRegistrationMetadata escrowMetadata = ISolisEscrowRegistrationMetadata(escrow);
+
+        try escrowMetadata.registryVersion() returns (uint256 escrowVersion_) {
+            if (escrowVersion_ != version) revert InvalidEscrowMetadata(escrow);
+        } catch {
+            revert InvalidEscrowMetadata(escrow);
+        }
+
+        try escrowMetadata.registry() returns (address escrowRegistry) {
+            if (escrowRegistry != address(this)) revert InvalidEscrowMetadata(escrow);
+        } catch {
+            revert InvalidEscrowMetadata(escrow);
+        }
+
+        try escrowMetadata.ESCROW_VERSION() returns (string memory escrowSemver) {
+            if (keccak256(bytes(escrowSemver)) != keccak256(bytes(semver))) revert InvalidEscrowMetadata(escrow);
+        } catch {
+            revert InvalidEscrowMetadata(escrow);
+        }
     }
 }

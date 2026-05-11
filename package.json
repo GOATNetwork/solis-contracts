@@ -1,8 +1,16 @@
 {
   "name": "solis",
   "version": "1.0.0",
-  "private": "true",
+  "private": true,
   "type": "module",
+  "scripts": {
+    "build": "hardhat build",
+    "format:sol": "forge fmt contracts",
+    "format:sol:check": "forge fmt --check contracts",
+    "test": "hardhat test",
+    "typecheck": "tsc --noEmit",
+    "verify": "npm run format:sol:check && npm run build && npm run typecheck && npm test"
+  },
   "devDependencies": {
     "@nomicfoundation/hardhat-ignition": "^3.1.5",
     "@nomicfoundation/hardhat-toolbox-viem": "^5.0.5",

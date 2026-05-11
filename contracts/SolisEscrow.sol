@@ -47,7 +47,7 @@ contract SolisEscrow is ISolisEscrow, Ownable, Pausable, ReentrancyGuard, EIP712
     /// @notice Accounts allowed to pause/unpause Matters and the global contract.
     mapping(address => bool) public pausers;
 
-    /// @dev Active signers are tracked in a list so platform signatures can be checked without caller hints.
+    /// @dev Signers are tracked in a list for discovery; signature verification uses an explicit signer hint.
     address[] private _platformSignerList;
     mapping(address => bool) private _knownPlatformSigner;
 
@@ -102,6 +102,7 @@ contract SolisEscrow is ISolisEscrow, Ownable, Pausable, ReentrancyGuard, EIP712
     error ReleaseTimeNotReached();
     error InvalidSignature(address expectedSigner);
     error InvalidPlatformSignature();
+    error InvalidFundingAmount(address token, uint256 expectedAmount, uint256 actualAmount);
     error Unauthorized();
     error MatterPausedError(bytes32 matterId);
     error InvalidVersion();
@@ -153,6 +154,7 @@ contract SolisEscrow is ISolisEscrow, Ownable, Pausable, ReentrancyGuard, EIP712
     ) external nonReentrant whenNotPaused {
         _validateAndAuthorizeMatter(params, sigs);
 
+        uint256 balanceBefore = IERC20(params.token).balanceOf(address(this));
         IUSDCAuth(params.token)
             .receiveWithAuthorization(
                 params.payor,
@@ -165,6 +167,7 @@ contract SolisEscrow is ISolisEscrow, Ownable, Pausable, ReentrancyGuard, EIP712
                 auth.r,
                 auth.s
             );
+        _requireExactFunding(params.token, balanceBefore, params.grossAmount);
 
         _recordFundedMatter(params);
         _autoReleaseIfRequested(params.matterId, params.payoutRule, autoRelease);
@@ -179,7 +182,9 @@ contract SolisEscrow is ISolisEscrow, Ownable, Pausable, ReentrancyGuard, EIP712
     {
         _validateAndAuthorizeMatter(params, sigs);
 
+        uint256 balanceBefore = IERC20(params.token).balanceOf(address(this));
         IERC20(params.token).safeTransferFrom(params.payor, address(this), params.grossAmount);
+        _requireExactFunding(params.token, balanceBefore, params.grossAmount);
 
         _recordFundedMatter(params);
         _autoReleaseIfRequested(params.matterId, params.payoutRule, autoRelease);
@@ -207,7 +212,7 @@ contract SolisEscrow is ISolisEscrow, Ownable, Pausable, ReentrancyGuard, EIP712
         bytes32 digest = hashCancellation(matterId);
         _requireValidSignature(matter.payor, digest, sigs.payorSignature);
         _requireValidSignature(matter.recipient, digest, sigs.recipientSignature);
-        _requireValidPlatformSignature(digest, sigs.platformSignature);
+        _requireValidPlatformSignature(sigs.platformSigner, digest, sigs.platformSignature);
 
         if (sigs.mediatorSignature.length != 0) {
             _requireValidSignature(matter.mediator, digest, sigs.mediatorSignature);
@@ -406,7 +411,7 @@ contract SolisEscrow is ISolisEscrow, Ownable, Pausable, ReentrancyGuard, EIP712
         _requireValidSignature(params.payor, digest, sigs.payorSignature);
         _requireValidSignature(params.recipient, digest, sigs.recipientSignature);
         _requireValidSignature(params.mediator, digest, sigs.mediatorSignature);
-        _requireValidPlatformSignature(digest, sigs.platformSignature);
+        _requireValidPlatformSignature(sigs.platformSigner, digest, sigs.platformSignature);
     }
 
     function _validateMatterParams(MatterParams calldata params) private view {
@@ -548,16 +553,17 @@ contract SolisEscrow is ISolisEscrow, Ownable, Pausable, ReentrancyGuard, EIP712
         }
     }
 
-    function _requireValidPlatformSignature(bytes32 digest, bytes calldata signature) private view {
-        // Signer rotation is handled by accepting any active signer in the append-only signer list.
-        for (uint256 i = 0; i < _platformSignerList.length; ++i) {
-            address signer = _platformSignerList[i];
-            if (platformSigners[signer] && SignatureChecker.isValidSignatureNowCalldata(signer, digest, signature)) {
-                return;
-            }
+    function _requireValidPlatformSignature(address signer, bytes32 digest, bytes calldata signature) private view {
+        if (!platformSigners[signer]) revert InvalidPlatformSignature();
+        if (!SignatureChecker.isValidSignatureNowCalldata(signer, digest, signature)) {
+            revert InvalidPlatformSignature();
         }
+    }
 
-        revert InvalidPlatformSignature();
+    function _requireExactFunding(address token, uint256 balanceBefore, uint256 expectedAmount) private view {
+        uint256 balanceAfter = IERC20(token).balanceOf(address(this));
+        uint256 actualAmount = balanceAfter > balanceBefore ? balanceAfter - balanceBefore : 0;
+        if (actualAmount != expectedAmount) revert InvalidFundingAmount(token, expectedAmount, actualAmount);
     }
 
     function _setPlatformSigner(address signer, bool active) private {

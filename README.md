@@ -18,7 +18,7 @@ npm install
 ## Build
 
 ```shell
-npx hardhat build
+npm run build
 ```
 
 The Solidity profile enables optimizer and `viaIR` because the Solis EIP-712 matter struct is intentionally wide and should not be reshaped only to avoid stack-depth limits.
@@ -42,25 +42,33 @@ forge fmt contracts
 Check formatting without modifying files:
 
 ```shell
-forge fmt --check contracts
+npm run format:sol:check
 ```
 
 ## Test
 
 ```shell
-npx hardhat test
+npm test
+```
+
+Run the full local verification suite:
+
+```shell
+npm run verify
 ```
 
 The TypeScript tests cover:
 
-- Registry registration, deprecation, reactivation, and latest escrow discovery.
-- EIP-712 matter signatures for payor, recipient, mediator, and platform signer.
+- Registry registration, metadata consistency, deprecation, reactivation, and latest escrow discovery.
+- EIP-712 matter signatures for payor, recipient, mediator, and hinted active platform signer.
 - `submitMatterWithUSDCAuth` using a mock USDC `receiveWithAuthorization`.
 - `submitMatterWithAllowance` fallback funding.
+- Exact `grossAmount` balance-increase checks for both funding paths.
 - Immediate auto-release and timed release.
-- Matter pause and joint cancellation refund.
+- Global pause freezing submission, release, and refund.
+- Matter pause and joint cancellation refund when global pause is off.
 - Accounted balance protection for `sweepExcessToken`.
-- EIP-1271 smart contract platform signer validation.
+- Platform signer rotation and EIP-1271 smart contract platform signer validation.
 
 ## Deployment
 
@@ -94,6 +102,8 @@ verifyingContract: address(this)
 
 This binds signatures to a specific chain and escrow version contract. `registryVersion` is also included in the typed data.
 
+Submission and cancellation bundles include `platformSigner`, an explicit active signer hint used to verify the platform signature without iterating over historical signer records.
+
 ## Funding Paths
 
 Primary path:
@@ -109,3 +119,4 @@ submitMatterWithAllowance(params, sigs, autoRelease)
 ```
 
 Both paths validate the same Solis matter signatures and only accept tokens enabled in `allowedTokens`.
+Both paths also require the escrow token balance to increase by exactly `grossAmount` before any Matter is recorded, rejecting short-transfer or fee-on-transfer funding behavior.
