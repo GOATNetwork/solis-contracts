@@ -16,13 +16,12 @@ Core contracts:
 ## Language and Documentation
 
 - Write code comments, NatSpec, README updates, and agent-facing documentation in English.
-- Do not add Chinese comments or Chinese documentation.
 - Prefer NatSpec for public/external Solidity APIs that affect funds, signatures, roles, or state transitions.
 - Keep comments focused on intent, security boundaries, invariants, and non-obvious behavior. Do not restate simple assignments or obvious Solidity syntax.
 
 ## Solidity Guidelines
 
-- Use Solidity `0.8.28` and the existing Hardhat profiles.
+- Use Solidity version which defined in `hardhat.config.ts` and the existing Hardhat profiles.
 - Keep contracts non-upgradeable. Do not introduce OpenZeppelin Upgradeable contracts, proxies, or delegatecall-based upgrade paths.
 - Prefer OpenZeppelin standard contracts and libraries for ownership, pausing, reentrancy protection, ERC-20 handling, EIP-712, ECDSA, and EIP-1271 validation.
 - Format Solidity files with Foundry's `forge fmt`. Install Foundry first if `forge` is unavailable.

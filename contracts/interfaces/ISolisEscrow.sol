@@ -1,17 +1,13 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.28;
+pragma solidity ^0.8.35;
 
 interface ISolisEscrow {
-    enum PayoutRule {
-        Immediate,
-        Timed
-    }
-
     enum MatterStatus {
         None,
-        Funded,
+        Paid,
+        RecipientConfirmed,
         Released,
-        Cancelled,
+        RecipientRejected,
         Refunded,
         Paused
     }
@@ -28,9 +24,8 @@ interface ISolisEscrow {
         uint256 recipientAmount;
         uint256 platformFeeAmount;
         uint256 mediatorFeeAmount;
-        PayoutRule payoutRule;
-        uint64 releaseTime;
-        uint64 submitDeadline;
+        uint64 paymentDeadline;
+        uint64 confirmationDeadline;
         uint256 registryVersion;
     }
 
@@ -44,19 +39,19 @@ interface ISolisEscrow {
         uint256 recipientAmount;
         uint256 platformFeeAmount;
         uint256 mediatorFeeAmount;
-        PayoutRule payoutRule;
         MatterStatus status;
-        uint64 releaseTime;
+        uint64 paymentDeadline;
+        uint64 confirmationDeadline;
         uint64 submittedAt;
+        uint64 confirmedAt;
+        uint64 rejectedAt;
         uint64 releasedAt;
+        uint64 refundedAt;
     }
 
-    struct SignatureBundle {
-        bytes payorSignature;
-        bytes recipientSignature;
-        bytes mediatorSignature;
-        address platformSigner;
-        bytes platformSignature;
+    struct PlatformSignature {
+        address signer;
+        bytes signature;
     }
 
     struct USDCAuthorization {
@@ -68,32 +63,27 @@ interface ISolisEscrow {
         bytes32 s;
     }
 
-    struct CancellationSignatures {
-        bytes payorSignature;
-        bytes recipientSignature;
-        address platformSigner;
-        bytes platformSignature;
-        bytes mediatorSignature;
-    }
-
-    function submitMatterWithUSDCAuth(
+    function payAndSubmitMatter(
         MatterParams calldata params,
-        SignatureBundle calldata sigs,
-        USDCAuthorization calldata auth,
-        bool autoRelease
+        PlatformSignature calldata platformSig,
+        USDCAuthorization calldata auth
     ) external;
 
-    function submitMatterWithAllowance(MatterParams calldata params, SignatureBundle calldata sigs, bool autoRelease)
-        external;
+    function confirmAndRelease(MatterParams calldata params) external;
 
-    function release(bytes32 matterId) external;
+    function rejectAndRefund(MatterParams calldata params) external;
 
-    function cancelAndRefundByAgreement(bytes32 matterId, CancellationSignatures calldata sigs) external;
+    function refundAfterConfirmationDeadline(bytes32 matterId) external;
 
     function getMatter(bytes32 matterId) external view returns (Matter memory);
+
     function getMatterStatus(bytes32 matterId) external view returns (MatterStatus);
+
     function getSettlementDigest(bytes32 matterId) external view returns (bytes32);
-    function isReleasable(bytes32 matterId) external view returns (bool);
+
+    function getDeadlines(bytes32 matterId) external view returns (uint64 paymentDeadline, uint64 confirmationDeadline);
+
+    function isRecipientActionable(bytes32 matterId) external view returns (bool);
 
     function getPayoutBreakdown(bytes32 matterId)
         external

@@ -6,16 +6,16 @@ export default buildModule("SolisCoreModule", (m) => {
   const owner = m.getParameter("owner", m.getAccount(0));
   const platformSigner = m.getParameter("platformSigner", m.getAccount(1));
   const pauser = m.getParameter("pauser", m.getAccount(2));
-  const allowedToken = m.getParameter("allowedToken", MAINNET_USDC);
+  const settlementToken = m.getParameter("settlementToken", MAINNET_USDC);
   const registryVersion = m.getParameter("registryVersion", 1n);
-  const semver = m.getParameter("semver", "1.0.0");
+  const semver = m.getParameter("semver", "1.3.0");
 
   const registry = m.contract("SolisRegistry", [owner]);
   const escrow = m.contract("SolisEscrow", [
     owner,
     platformSigner,
     pauser,
-    allowedToken,
+    settlementToken,
     registry,
     registryVersion,
   ]);

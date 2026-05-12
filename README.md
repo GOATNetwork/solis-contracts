@@ -1,13 +1,13 @@
 # Solis Smart Contracts
 
-This repository contains the Hardhat 3 implementation of the Solis on-chain settlement contracts.
+This repository contains the Hardhat 3 implementation of the Solis v1.3 on-chain escrow contracts.
 
 The system uses two production contracts:
 
 - `SolisRegistry`: non-proxy version discovery for escrow deployments.
-- `SolisEscrow`: multi-matter escrow execution with EIP-712 approvals, USDC authorization funding, allowance fallback funding, release, joint cancellation refund, pause controls, and accounted-balance-safe sweeping.
+- `SolisEscrow`: multi-matter escrow execution where the Payor funds on-chain, the Recipient confirms or rejects on-chain, and confirmed funds are released immediately.
 
-The contracts intentionally do not store legal text, names, emails, identity data, or settlement package contents. The on-chain commitment is `settlementDigest`, which must be generated from the off-chain settlement package.
+The contracts intentionally do not store legal text, names, emails, identity data, attachments, salts, or raw settlement packages. The on-chain commitment is `settlementDigest`, generated and stored by the platform off-chain.
 
 ## Install
 
@@ -21,7 +21,7 @@ npm install
 npm run build
 ```
 
-The Solidity profile enables optimizer and `viaIR` because the Solis EIP-712 matter struct is intentionally wide and should not be reshaped only to avoid stack-depth limits.
+The Solidity profile uses compiler `0.8.35`, optimizer, `viaIR`, and the `osaka` EVM target.
 
 ## Solidity Formatting
 
@@ -67,15 +67,15 @@ npm run verify
 The TypeScript tests cover:
 
 - Registry registration, metadata consistency, deprecation, reactivation, and latest escrow discovery.
-- EIP-712 matter signatures for payor, recipient, mediator, and hinted active platform signer.
-- `submitMatterWithUSDCAuth` using a mock USDC `receiveWithAuthorization`.
-- `submitMatterWithAllowance` fallback funding.
-- Exact `grossAmount` balance-increase checks for both funding paths.
-- Immediate auto-release and timed release.
-- Global pause freezing submission, release, and refund.
-- Matter pause and joint cancellation refund when global pause is off.
+- PlatformSigner EIP-712 approval over `matterId`, `settlementDigest`, addresses, amounts, token, deadlines, and registry version.
+- Payor-only funding through `payAndSubmitMatter` using USDC `receiveWithAuthorization`.
+- Exact `grossAmount` balance-increase checks, including short-transfer token rejection.
+- Recipient confirmation with immediate fund release.
+- Recipient rejection and full Payor refund.
+- Confirmation deadline refunds by Payor or platform operator.
+- Global pause and Matter pause behavior.
 - Accounted balance protection for `sweepExcessToken`.
-- Platform signer rotation and EIP-1271 smart contract platform signer validation.
+- PlatformSigner rotation and EIP-1271 smart contract platform signer validation.
 
 ## Deployment
 
@@ -90,9 +90,9 @@ Default parameters:
 - `owner`: deployer account.
 - `platformSigner`: account index 1.
 - `pauser`: account index 2.
-- `allowedToken`: Ethereum mainnet USDC (`0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48`).
+- `settlementToken`: Ethereum mainnet USDC (`0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48`).
 - `registryVersion`: `1`.
-- `semver`: `1.0.0`.
+- `semver`: `1.3.0`.
 
 Override parameters with an Ignition deployment parameters file for non-local deployments.
 
@@ -107,23 +107,42 @@ chainId: block.chainid
 verifyingContract: address(this)
 ```
 
-This binds signatures to a specific chain and escrow version contract. `registryVersion` is also included in the typed data.
+This binds PlatformSigner approvals to a specific chain and escrow version contract. `registryVersion` is also included in the typed data.
 
-Submission and cancellation bundles include `platformSigner`, an explicit active signer hint used to verify the platform signature without iterating over historical signer records.
+## Escrow Flow
 
-## Funding Paths
+Wallet and frontend teams should use [docs/integration.md](docs/integration.md) for typed data, transaction, event indexing, and diagram examples.
 
-Primary path:
+The platform creates the off-chain Matter, locks the agreement document, computes `settlementDigest`, and signs `MatterParams` with an active PlatformSigner.
 
-```text
-submitMatterWithUSDCAuth(params, sigs, auth, autoRelease)
-```
-
-Fallback path:
+Payor funding:
 
 ```text
-submitMatterWithAllowance(params, sigs, autoRelease)
+payAndSubmitMatter(params, platformSig, auth)
 ```
 
-Both paths validate the same Solis matter signatures and only accept tokens enabled in `allowedTokens`.
-Both paths also require the escrow token balance to increase by exactly `grossAmount` before any Matter is recorded, rejecting short-transfer or fee-on-transfer funding behavior.
+The Payor must be `msg.sender`, the payment deadline must still be valid, and the supplied USDC authorization must move exactly `grossAmount` into escrow.
+
+Recipient confirmation:
+
+```text
+confirmAndRelease(params)
+```
+
+The Recipient must be `msg.sender`, the params must match the stored Matter snapshot, and the confirmation deadline must still be valid. Confirmation immediately splits funds to the Recipient, platform fee recipient, and Mediator.
+
+Recipient rejection:
+
+```text
+rejectAndRefund(params)
+```
+
+The Recipient must be `msg.sender`. Rejection refunds the full gross amount to the Payor.
+
+Confirmation timeout:
+
+```text
+refundAfterConfirmationDeadline(matterId)
+```
+
+After `confirmationDeadline`, the Payor or a platform operator can trigger a full refund to the Payor. The caller cannot choose another refund recipient.
