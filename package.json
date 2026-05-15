@@ -9,6 +9,7 @@
     "format:sol:check": "forge fmt --check contracts",
     "format:ts": "prettier --write \"**/*.{ts,tsx}\"",
     "format:ts:check": "prettier --check \"**/*.{ts,tsx}\"",
+    "format": "npm run format:sol && npm run format:ts",
     "test": "hardhat test",
     "typecheck": "tsc --noEmit",
     "verify": "npm run format:sol:check && npm run format:ts:check && npm run build && npm run typecheck && npm test"

@@ -88,13 +88,31 @@ npx hardhat ignition deploy ignition/modules/SolisCore.ts
 Default parameters:
 
 - `owner`: deployer account.
-- `platformSigner`: account index 1.
-- `pauser`: account index 2.
+- `platformSigner`: deployer account.
+- `pauser`: deployer account.
 - `settlementToken`: Ethereum mainnet USDC (`0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48`).
 - `registryVersion`: `1`.
 - `semver`: `1.3.0`.
 
 Override parameters with an Ignition deployment parameters file for non-local deployments.
+
+## Admin Tasks
+
+Transfer the `SolisRegistry` owner:
+
+```shell
+npx hardhat solis transfer-registry-owner <newOwner> --network sepolia
+```
+
+Enable or disable a `SolisEscrow` platform signer:
+
+```shell
+npx hardhat solis set-platform-signer <signer> --active true --network sepolia
+npx hardhat solis set-platform-signer <signer> --active false --network sepolia
+```
+
+Tasks read contract addresses from the Ignition deployment for the selected network. Pass
+`--deployment-id <id>` when you need to target a non-default deployment.
 
 ## EIP-712 Domain
 

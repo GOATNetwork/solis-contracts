@@ -1,0 +1,10 @@
+{
+  "$version": "v1.3.0",
+  "SolisCoreModule": {
+    "platformSigner": "0x3c417296b3b94f10319aade347422cc3042f964b",
+    "pauser": "0x3c417296b3b94f10319aade347422cc3042f964b",
+    "settlementToken": "0xff6981ac8f983914a9ea8d27b13c07d8d62c4a3b",
+    "registryVersion": 1,
+    "semver": "1.3.0"
+  }
+}
